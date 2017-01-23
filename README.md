@@ -5,7 +5,7 @@ To try this component, just add it in `.homeassistant/custom_components/sensor/`
 
 -----------------
 
-Example configuration :
+### Example configuration
 
     sensor:
       - platform: history_stats
@@ -22,7 +22,14 @@ Example configuration :
         end: '{{ as_timestamp(now()) }}'
         name: Kitchen lamp, last 7 days
         
-With the following parameters :
+        
+Will be rendered like this :
+
+![preview](http://i.imgur.com/t3juZql.png)
+        
+        
+### Parameters
+ 
 
  - **entity_id** : The entity you want to track
 
