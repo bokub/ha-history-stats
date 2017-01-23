@@ -8,6 +8,8 @@ https://home-assistant.io/components/sensor.history_stats/
 import asyncio
 import datetime
 import logging
+import math
+import re
 
 import homeassistant.components.history as history
 import homeassistant.helpers.config_validation as cv
@@ -31,7 +33,7 @@ CONF_DURATION = 'duration'
 CONF_PERIOD_KEYS = [CONF_START, CONF_END, CONF_DURATION]
 
 DEFAULT_NAME = 'History Statistics'
-UNIT = 's'
+UNIT = 'h'
 ICON = 'mdi:calculator'
 WARMING_TIME = 3
 
@@ -61,12 +63,11 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     if start is not None and end is not None and duration is not None:
         raise _LOGGER.error('You have to pick exactly 2 of the following: start, end, duration')
 
-    if start is not None:
-        start.hass = hass
-    if end is not None:
-        end.hass = hass
-    if duration is not None:
-        duration.hass = hass
+    for template in [start, end, duration]:
+        if template is not None:
+            template.hass = hass
+            template.template = parse_time_expr(template.template)  # Parse time aliases
+            template._compiled_code = None  # Force recompilation of the template
 
     yield from async_add_devices(
         [HistoryStatsSensor(hass, entity_id, entity_state, start, end, duration, name)], True)
@@ -86,13 +87,14 @@ class HistoryStatsSensor(Entity):
         self._end = end
         self._name = name
         self._unit_of_measurement = UNIT
-        self.init = datetime.datetime.now()
+
+        self._init = datetime.datetime.now()
+        self._period = (None, None)
         self.value = 0
 
         @callback
         def async_stats_sensor_state_listener(entity, old_state, new_state):
             """Called when the sensor changes state."""
-
             hass.async_add_job(self.async_update_ha_state, True)
 
         async_track_state_change(hass, entity_id, async_stats_sensor_state_listener)
@@ -120,10 +122,9 @@ class HistoryStatsSensor(Entity):
     @property
     def state_attributes(self):
         """Return the state attributes of the sensor."""
-
         return {
-            # 'start': self.period()[0],
-            # 'end': self.period()[1],
+            'start': datetime.datetime.fromtimestamp(self._period[0]).strftime('%Y-%m-%d %H:%M:%S'),
+            'end': datetime.datetime.fromtimestamp(self._period[1]).strftime('%Y-%m-%d %H:%M:%S'),
         }
 
     @property
@@ -135,13 +136,14 @@ class HistoryStatsSensor(Entity):
     def async_update(self):
         """Get the latest data and updates the states."""
 
-        start_timestamp, end_timestamp = self.period()
+        self.update_period()
+        start_timestamp, end_timestamp = self._period
         start = datetime.datetime.utcfromtimestamp(start_timestamp).replace(tzinfo=pytz.UTC)
         end = datetime.datetime.utcfromtimestamp(end_timestamp).replace(tzinfo=pytz.UTC)
 
         # If history functions are called immediately after init, home assistant won't start.
-        # FIXME : find why, and solve the problem
-        if datetime.datetime.now().timestamp() < WARMING_TIME + self.init.timestamp():
+        # TODO : find why
+        if datetime.datetime.now().timestamp() < WARMING_TIME + self._init.timestamp():
             return
 
         history_list = history.state_changes_during_period(start, end, str(self._entity_id))
@@ -149,10 +151,13 @@ class HistoryStatsSensor(Entity):
         if self._entity_id not in history_list.keys():
             return
 
-        last_state = False  # TODO Find what was the state at t = start
+        # Get the first state
+        last_state = history.get_state(start, self._entity_id)
+        last_state = last_state is not None and last_state == self._entity_state
         last_time = start_timestamp
         elapsed = 0
 
+        # Make calculations
         for item in history_list.get(self._entity_id):
             current_state = item.state == self._entity_state
             current_time = item.last_changed.timestamp()
@@ -163,39 +168,48 @@ class HistoryStatsSensor(Entity):
             last_state = current_state
             last_time = current_time
 
-        self.value = round(elapsed, 2)
+        self.value = round(elapsed / 3600, 2)
 
-    def period(self):
-        """ Parses the template values and returns a (start, end) tuple"""
+    def update_period(self):
+        """ Parse the template values and stores a(start, end) timestamp tuple in _period"""
         start = None
         end = None
 
         if self._start is not None:
             try:
-                start = round(float(self._start.async_render()), 0)
+                start = math.floor(float(self._start.async_render()))
             except TemplateError as ex:
                 handle_template_exception(ex)
+            except ValueError:
+                _LOGGER.error('Value for "start" cannot be converted to timestamp ')
 
         if self._end is not None:
             try:
-                end = round(float(self._end.async_render()), 0)
+                end = math.floor(float(self._end.async_render()))
             except TemplateError as ex:
                 handle_template_exception(ex)
+            except ValueError:
+                _LOGGER.error('Value for "end" cannot be converted to timestamp ')
 
         if start is not None and end is not None:
-            return start, end
+            self._period = start, end
+            return
 
         duration = None
         try:
-            duration = round(float(self._duration.async_render()), 0)
+            duration = math.floor(float(self._duration.async_render()))
         except TemplateError as ex:
             handle_template_exception(ex)
+        except ValueError:
+            _LOGGER.error('Value for "duration" cannot be converted to timestamp ')
 
         if end is None and start:
-            return start, start + duration
+            self._period = start, start + duration
+            return
 
         if start is None:
-            return end - duration, end
+            self._period = end - duration, end
+            return
 
 
 def handle_template_exception(ex):
@@ -204,3 +218,18 @@ def handle_template_exception(ex):
         _LOGGER.warning(ex)
         return
     _LOGGER.error(ex)
+
+
+def parse_time_expr(str):
+    """Replace time expressions with functions accepted by templates"""
+
+    regex = r"(now\(\)(\.replace\([a-z]+=[0-9]+\))*)"
+    replacement = r"as_timestamp(\1)"
+
+    return re.sub(regex, replacement, str.replace(
+        "_THIS_YEAR_", "_THIS_MONTH_.replace(month=1)").replace(
+        "_THIS_MONTH_", "_TODAY_.replace(day=1)").replace(
+        "_TODAY_", "_THIS_HOUR_.replace(hour=0)").replace(
+        "_THIS_HOUR_", "_THIS_MINUTE_.replace(minute=0)").replace(
+        "_THIS_MINUTE_", "_NOW_.replace(second=0)").replace(
+        "_NOW_", "now()"))
