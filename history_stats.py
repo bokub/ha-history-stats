@@ -10,14 +10,15 @@ import datetime
 import logging
 import math
 import re
+import time
 
 import homeassistant.components.history as history
+import homeassistant.components.recorder as recorder
 import homeassistant.helpers.config_validation as cv
 import pytz
 import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import (
-    CONF_NAME, CONF_ENTITY_ID, CONF_STATE)
+from homeassistant.const import (CONF_NAME, CONF_ENTITY_ID, CONF_STATE)
 from homeassistant.core import callback
 from homeassistant.exceptions import TemplateError
 from homeassistant.helpers.entity import Entity
@@ -25,6 +26,7 @@ from homeassistant.helpers.event import async_track_state_change
 
 _LOGGER = logging.getLogger(__name__)
 
+DOMAIN = 'history_stats'
 DEPENDENCIES = ['history']
 
 CONF_START = 'start'
@@ -141,9 +143,8 @@ class HistoryStatsSensor(Entity):
         start = datetime.datetime.utcfromtimestamp(start_timestamp).replace(tzinfo=pytz.UTC)
         end = datetime.datetime.utcfromtimestamp(end_timestamp).replace(tzinfo=pytz.UTC)
 
-        # If history functions are called immediately after init, home assistant won't start.
-        # TODO : find why
-        if datetime.datetime.now().timestamp() < WARMING_TIME + self._init.timestamp():
+        if not wait_till_db_ready():
+            _LOGGER.error('Cannot connect to database')
             return
 
         history_list = history.state_changes_during_period(start, end, str(self._entity_id))
@@ -233,3 +234,16 @@ def parse_time_expr(str):
         "_THIS_HOUR_", "_THIS_MINUTE_.replace(minute=0)").replace(
         "_THIS_MINUTE_", "_NOW_.replace(second=0)").replace(
         "_NOW_", "now()"))
+
+
+def wait_till_db_ready():
+    if recorder._INSTANCE.db_ready._flag:
+        return True
+
+    time.sleep(0.5)
+    if recorder._INSTANCE.db_ready._flag:
+        return True
+
+    recorder._INSTANCE._setup_connection()
+    time.sleep(0.5)
+    return recorder._INSTANCE.db_ready._flag
