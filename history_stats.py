@@ -68,7 +68,7 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     for template in [start, end, duration]:
         if template is not None:
             template.hass = hass
-            template.template = parse_time_expr(template.template)  # Parse time aliases
+            template.template = HistoryStatsHelper.parse_time_expr(template.template)  # Parse time aliases
             template._compiled_code = None  # Force recompilation of the template
 
     yield from async_add_devices(
@@ -143,7 +143,7 @@ class HistoryStatsSensor(Entity):
         start = datetime.datetime.utcfromtimestamp(start_timestamp).replace(tzinfo=pytz.UTC)
         end = datetime.datetime.utcfromtimestamp(end_timestamp).replace(tzinfo=pytz.UTC)
 
-        if not wait_till_db_ready():
+        if not HistoryStatsHelper.wait_till_db_ready():
             _LOGGER.error('Cannot connect to database')
             return
 
@@ -180,7 +180,7 @@ class HistoryStatsSensor(Entity):
             try:
                 start = math.floor(float(self._start.async_render()))
             except TemplateError as ex:
-                handle_template_exception(ex)
+                HistoryStatsHelper.handle_template_exception(ex)
             except ValueError:
                 _LOGGER.error('Value for "start" cannot be converted to timestamp ')
 
@@ -188,7 +188,7 @@ class HistoryStatsSensor(Entity):
             try:
                 end = math.floor(float(self._end.async_render()))
             except TemplateError as ex:
-                handle_template_exception(ex)
+                HistoryStatsHelper.handle_template_exception(ex)
             except ValueError:
                 _LOGGER.error('Value for "end" cannot be converted to timestamp ')
 
@@ -200,7 +200,7 @@ class HistoryStatsSensor(Entity):
         try:
             duration = math.floor(float(self._duration.async_render()))
         except TemplateError as ex:
-            handle_template_exception(ex)
+            HistoryStatsHelper.handle_template_exception(ex)
         except ValueError:
             _LOGGER.error('Value for "duration" cannot be converted to timestamp ')
 
@@ -213,37 +213,41 @@ class HistoryStatsSensor(Entity):
             return
 
 
-def handle_template_exception(ex):
-    if ex.args and ex.args[0].startswith("UndefinedError: 'None' has no attribute"):
-        # Common during HA startup - so just a warning
-        _LOGGER.warning(ex)
-        return
-    _LOGGER.error(ex)
+class HistoryStatsHelper:
+    """Static methods to make the HistoryStatsSensor code lighter"""
 
+    @staticmethod
+    def handle_template_exception(ex):
+        if ex.args and ex.args[0].startswith("UndefinedError: 'None' has no attribute"):
+            # Common during HA startup - so just a warning
+            _LOGGER.warning(ex)
+            return
+        _LOGGER.error(ex)
 
-def parse_time_expr(str):
-    """Replace time expressions with functions accepted by templates"""
+    @staticmethod
+    def parse_time_expr(str):
+        """Replace time expressions with functions accepted by templates"""
 
-    regex = r"(now\(\)(\.replace\([a-z]+=[0-9]+\))*)"
-    replacement = r"as_timestamp(\1)"
+        regex = r"(now\(\)(\.replace\([a-z]+=[0-9]+\))*)"
+        replacement = r"as_timestamp(\1)"
 
-    return re.sub(regex, replacement, str.replace(
-        "_THIS_YEAR_", "_THIS_MONTH_.replace(month=1)").replace(
-        "_THIS_MONTH_", "_TODAY_.replace(day=1)").replace(
-        "_TODAY_", "_THIS_HOUR_.replace(hour=0)").replace(
-        "_THIS_HOUR_", "_THIS_MINUTE_.replace(minute=0)").replace(
-        "_THIS_MINUTE_", "_NOW_.replace(second=0)").replace(
-        "_NOW_", "now()"))
+        return re.sub(regex, replacement, str.replace(
+            "_THIS_YEAR_", "_THIS_MONTH_.replace(month=1)").replace(
+            "_THIS_MONTH_", "_TODAY_.replace(day=1)").replace(
+            "_TODAY_", "_THIS_HOUR_.replace(hour=0)").replace(
+            "_THIS_HOUR_", "_THIS_MINUTE_.replace(minute=0)").replace(
+            "_THIS_MINUTE_", "_NOW_.replace(second=0)").replace(
+            "_NOW_", "now()"))
 
+    @staticmethod
+    def wait_till_db_ready():
+        if recorder._INSTANCE.db_ready._flag:
+            return True
 
-def wait_till_db_ready():
-    if recorder._INSTANCE.db_ready._flag:
-        return True
+        time.sleep(0.5)
+        if recorder._INSTANCE.db_ready._flag:
+            return True
 
-    time.sleep(0.5)
-    if recorder._INSTANCE.db_ready._flag:
-        return True
-
-    recorder._INSTANCE._setup_connection()
-    time.sleep(0.5)
-    return recorder._INSTANCE.db_ready._flag
+        recorder._INSTANCE._setup_connection()
+        time.sleep(0.5)
+        return recorder._INSTANCE.db_ready._flag
