@@ -15,7 +15,7 @@ import time
 import homeassistant.components.history as history
 import homeassistant.components.recorder as recorder
 import homeassistant.helpers.config_validation as cv
-import pytz
+import homeassistant.util.dt as dt_util
 import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import (CONF_NAME, CONF_ENTITY_ID, CONF_STATE)
@@ -88,10 +88,11 @@ class HistoryStatsSensor(Entity):
         self._start = start
         self._end = end
         self._name = name
+        self._tz = hass.config.time_zone
         self._unit_of_measurement = UNIT
 
         self._init = datetime.datetime.now()
-        self._period = (None, None)
+        self._period = (0.0, 0.0)
         self.value = 0
 
         @callback
@@ -124,9 +125,11 @@ class HistoryStatsSensor(Entity):
     @property
     def state_attributes(self):
         """Return the state attributes of the sensor."""
+        start_timestamp, end_timestamp = self._period
+
         return {
-            'start': datetime.datetime.fromtimestamp(self._period[0]).strftime('%Y-%m-%d %H:%M:%S'),
-            'end': datetime.datetime.fromtimestamp(self._period[1]).strftime('%Y-%m-%d %H:%M:%S'),
+            'from': HistoryStatsHelper.format_timestamp(start_timestamp),
+            'to': HistoryStatsHelper.format_timestamp(end_timestamp),
         }
 
     @property
@@ -139,9 +142,10 @@ class HistoryStatsSensor(Entity):
         """Get the latest data and updates the states."""
 
         self.update_period()
+
         start_timestamp, end_timestamp = self._period
-        start = datetime.datetime.utcfromtimestamp(start_timestamp).replace(tzinfo=pytz.UTC)
-        end = datetime.datetime.utcfromtimestamp(end_timestamp).replace(tzinfo=pytz.UTC)
+        start = dt_util.utc_from_timestamp(start_timestamp)
+        end = dt_util.utc_from_timestamp(end_timestamp)
 
         if not HistoryStatsHelper.wait_till_db_ready():
             _LOGGER.error('Cannot connect to database')
@@ -218,6 +222,7 @@ class HistoryStatsHelper:
 
     @staticmethod
     def handle_template_exception(ex):
+        """Log an error nicely if the template cannot be interpreted"""
         if ex.args and ex.args[0].startswith("UndefinedError: 'None' has no attribute"):
             # Common during HA startup - so just a warning
             _LOGGER.warning(ex)
@@ -241,13 +246,19 @@ class HistoryStatsHelper:
 
     @staticmethod
     def wait_till_db_ready():
+        """Start recorder connection if not done already"""
+        # Without this method, the recorder does not start its connection itself, resulting in
+        # an infinite loop blocking the boot of home assistant. It may be a nasty bug.
         if recorder._INSTANCE.db_ready._flag:
             return True
-
-        time.sleep(0.5)
+        time.sleep(0.5)  # Wait, just in case db is starting
         if recorder._INSTANCE.db_ready._flag:
             return True
-
-        recorder._INSTANCE._setup_connection()
-        time.sleep(0.5)
+        recorder._INSTANCE._setup_connection()  # Force connection
+        time.sleep(0.5)  # Wait a little
         return recorder._INSTANCE.db_ready._flag
+
+    @staticmethod
+    def format_timestamp(timestamp):
+        """Format a timestamp to a formatted datetime in the local timezone"""
+        return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)).strftime('%Y-%m-%d %H:%M:%S')
