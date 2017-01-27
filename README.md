@@ -1,7 +1,7 @@
 # ha-history-stats
 A home-assistant component that gives statistics about your history.
 
-To try this component, just add it in `.homeassistant/custom_components/sensor/` and restart home-assistant
+To try this component, just `add history_stats.py` in `.homeassistant/custom_components/sensor/` and restart home-assistant
 
 -----------------
 
