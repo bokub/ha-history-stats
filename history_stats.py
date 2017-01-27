@@ -34,10 +34,13 @@ CONF_END = 'end'
 CONF_DURATION = 'duration'
 CONF_PERIOD_KEYS = [CONF_START, CONF_END, CONF_DURATION]
 
-DEFAULT_NAME = 'History Statistics'
+DEFAULT_NAME = 'unnamed statistics'
 UNIT = 'h'
-ICON = 'mdi:calculator'
-WARMING_TIME = 3
+ICON = 'mdi:chart-line'
+
+PRINT_START = 'from'
+PRINT_END = 'to'
+PRINT_VALUE = 'value'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_ENTITY_ID): cv.entity_id,
@@ -110,7 +113,7 @@ class HistoryStatsSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self.value
+        return round(self.value, 2)
 
     @property
     def unit_of_measurement(self):
@@ -128,8 +131,9 @@ class HistoryStatsSensor(Entity):
         start_timestamp, end_timestamp = self._period
 
         return {
-            'from': HistoryStatsHelper.format_timestamp(start_timestamp),
-            'to': HistoryStatsHelper.format_timestamp(end_timestamp),
+            PRINT_VALUE: HistoryStatsHelper.pretty_duration(self.value),
+            PRINT_START: HistoryStatsHelper.pretty_datetime(start_timestamp),
+            PRINT_END: HistoryStatsHelper.pretty_datetime(end_timestamp),
         }
 
     @property
@@ -173,7 +177,7 @@ class HistoryStatsSensor(Entity):
             last_state = current_state
             last_time = current_time
 
-        self.value = round(elapsed / 3600, 2)
+        self.value = elapsed / 3600
 
     def update_period(self):
         """ Parse the template values and stores a(start, end) timestamp tuple in _period"""
@@ -221,15 +225,6 @@ class HistoryStatsHelper:
     """Static methods to make the HistoryStatsSensor code lighter"""
 
     @staticmethod
-    def handle_template_exception(ex):
-        """Log an error nicely if the template cannot be interpreted"""
-        if ex.args and ex.args[0].startswith("UndefinedError: 'None' has no attribute"):
-            # Common during HA startup - so just a warning
-            _LOGGER.warning(ex)
-            return
-        _LOGGER.error(ex)
-
-    @staticmethod
     def parse_time_expr(str):
         """Replace time expressions with functions accepted by templates"""
 
@@ -245,6 +240,36 @@ class HistoryStatsHelper:
             "_NOW_", "now()"))
 
     @staticmethod
+    def pretty_datetime(timestamp):
+        """Format a timestamp to a formatted datetime in the local timezone"""
+        return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)).strftime('%Y/%m/%d %H:%M:%S')
+
+    @staticmethod
+    def pretty_duration(hours):
+        """Format a duration in days, hours, minutes, seconds"""
+        seconds = int(3600 * hours)
+        days, seconds = divmod(seconds, 86400)
+        hours, seconds = divmod(seconds, 3600)
+        minutes, seconds = divmod(seconds, 60)
+        if days > 0:
+            return '%dd %dh %dm %ds' % (days, hours, minutes, seconds)
+        elif hours > 0:
+            return '%dh %dm %ds' % (hours, minutes, seconds)
+        elif minutes > 0:
+            return '%dm %ds' % (minutes, seconds)
+        else:
+            return '%ds' % (seconds,)
+
+    @staticmethod
+    def handle_template_exception(ex):
+        """Log an error nicely if the template cannot be interpreted"""
+        if ex.args and ex.args[0].startswith("UndefinedError: 'None' has no attribute"):
+            # Common during HA startup - so just a warning
+            _LOGGER.warning(ex)
+            return
+        _LOGGER.error(ex)
+
+    @staticmethod
     def wait_till_db_ready():
         """Start recorder connection if not done already"""
         # Without this method, the recorder does not start its connection itself, resulting in
@@ -257,8 +282,3 @@ class HistoryStatsHelper:
         recorder._INSTANCE._setup_connection()  # Force connection
         time.sleep(0.5)  # Wait a little
         return recorder._INSTANCE.db_ready._flag
-
-    @staticmethod
-    def format_timestamp(timestamp):
-        """Format a timestamp to a formatted datetime in the local timezone"""
-        return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)).strftime('%Y-%m-%d %H:%M:%S')
