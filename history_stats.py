@@ -1,12 +1,11 @@
 """
-Support for statistics about history
+Component to make instant statistics about your history
 
 For more details about this platform, please refer to the documentation at
 https://home-assistant.io/components/sensor.history_stats/
 """
 
 import asyncio
-import datetime
 import logging
 import math
 import re
@@ -52,6 +51,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
+# noinspection PyUnusedLocal
 @asyncio.coroutine
 def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     """Set up the History Stats sensor."""
@@ -85,19 +85,19 @@ class HistoryStatsSensor(Entity):
     def __init__(self, hass, entity_id, entity_state, start, end, duration, name):
         """Initialize the HistoryStats sensor."""
         self._hass = hass
+
         self._entity_id = entity_id
         self._entity_state = entity_state
         self._duration = duration
         self._start = start
         self._end = end
         self._name = name
-        self._tz = hass.config.time_zone
         self._unit_of_measurement = UNIT
 
-        self._init = datetime.datetime.now()
         self._period = (0.0, 0.0)
         self.value = 0
 
+        # noinspection PyUnusedLocal
         @callback
         def async_stats_sensor_state_listener(entity, old_state, new_state):
             """Called when the sensor changes state."""
@@ -145,8 +145,10 @@ class HistoryStatsSensor(Entity):
     def async_update(self):
         """Get the latest data and updates the states."""
 
+        # Parse templates
         self.update_period()
 
+        # Convert timestamps to datees
         start_timestamp, end_timestamp = self._period
         start = dt_util.utc_from_timestamp(start_timestamp)
         end = dt_util.utc_from_timestamp(end_timestamp)
@@ -155,6 +157,7 @@ class HistoryStatsSensor(Entity):
             _LOGGER.error('Cannot connect to database')
             return
 
+        # Get history between start and end
         history_list = history.state_changes_during_period(start, end, str(self._entity_id))
 
         if self._entity_id not in history_list.keys():
@@ -177,61 +180,42 @@ class HistoryStatsSensor(Entity):
             last_state = current_state
             last_time = current_time
 
+        # Save value in hours
         self.value = elapsed / 3600
 
     def update_period(self):
         """ Parse the template values and stores a(start, end) timestamp tuple in _period"""
         start = None
         end = None
-
-        if self._start is not None:
-            try:
-                start = math.floor(float(self._start.async_render()))
-            except TemplateError as ex:
-                HistoryStatsHelper.handle_template_exception(ex)
-            except ValueError:
-                _LOGGER.error('Value for "start" cannot be converted to timestamp ')
-
-        if self._end is not None:
-            try:
-                end = math.floor(float(self._end.async_render()))
-            except TemplateError as ex:
-                HistoryStatsHelper.handle_template_exception(ex)
-            except ValueError:
-                _LOGGER.error('Value for "end" cannot be converted to timestamp ')
-
-        if start is not None and end is not None:
-            self._period = start, end
-            return
-
         duration = None
+
         try:
-            duration = math.floor(float(self._duration.async_render()))
+            start = math.floor(float(self._start.async_render())) if self._start is not None else None
+            end = math.floor(float(self._end.async_render())) if self._end is not None else None
+            duration = math.floor(float(self._duration.async_render())) if self._duration is not None else None
         except TemplateError as ex:
             HistoryStatsHelper.handle_template_exception(ex)
         except ValueError:
-            _LOGGER.error('Value for "duration" cannot be converted to timestamp ')
+            _LOGGER.error('Template value cannot be converted to timestamp ')
 
-        if end is None and start:
-            self._period = start, start + duration
-            return
+        # Calculate start or end using the duration
+        start = end - duration if start is None else start
+        end = start + duration if end is None else end
 
-        if start is None:
-            self._period = end - duration, end
-            return
+        self._period = start, end
 
 
 class HistoryStatsHelper:
     """Static methods to make the HistoryStatsSensor code lighter"""
 
     @staticmethod
-    def parse_time_expr(str):
+    def parse_time_expr(expression):
         """Replace time expressions with functions accepted by templates"""
 
         regex = r"(now\(\)(\.replace\([a-z]+=[0-9]+\))*)"
         replacement = r"as_timestamp(\1)"
 
-        return re.sub(regex, replacement, str.replace(
+        return re.sub(regex, replacement, expression.replace(
             "_THIS_YEAR_", "_THIS_MONTH_.replace(month=1)").replace(
             "_THIS_MONTH_", "_TODAY_.replace(day=1)").replace(
             "_TODAY_", "_THIS_HOUR_.replace(hour=0)").replace(
@@ -269,6 +253,7 @@ class HistoryStatsHelper:
             return
         _LOGGER.error(ex)
 
+    # noinspection PyProtectedMember
     @staticmethod
     def wait_till_db_ready():
         """Start recorder connection if not done already"""
