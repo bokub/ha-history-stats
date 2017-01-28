@@ -11,11 +11,12 @@ import math
 import re
 import time
 
+import voluptuous as vol
+
 import homeassistant.components.history as history
 import homeassistant.components.recorder as recorder
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
-import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import (CONF_NAME, CONF_ENTITY_ID, CONF_STATE)
 from homeassistant.core import callback
@@ -106,6 +107,7 @@ class HistoryStatsSensor(Entity):
         self.value = 0
 
         # noinspection PyUnusedLocal
+        # pylint: disable=invalid-name
         @callback
         def async_stats_sensor_state_listener(entity, old_state, new_state):
             """Called when the sensor changes state."""
