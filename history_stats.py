@@ -35,11 +35,13 @@ CONF_PERIOD_KEYS = [CONF_START, CONF_END, CONF_DURATION]
 
 DEFAULT_NAME = 'unnamed statistics'
 UNIT = 'h'
+UNIT_RATIO = '%'
 ICON = 'mdi:chart-line'
 
 PRINT_START = 'from'
 PRINT_END = 'to'
 PRINT_VALUE = 'value'
+PRINT_RATIO = 'ratio'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_ENTITY_ID): cv.entity_id,
@@ -132,6 +134,7 @@ class HistoryStatsSensor(Entity):
 
         return {
             PRINT_VALUE: HistoryStatsHelper.pretty_duration(self.value),
+            PRINT_RATIO: HistoryStatsHelper.pretty_ratio(self.value, self._period),
             PRINT_START: HistoryStatsHelper.pretty_datetime(start_timestamp),
             PRINT_END: HistoryStatsHelper.pretty_datetime(end_timestamp),
         }
@@ -249,6 +252,15 @@ class HistoryStatsHelper:
             return '%dm %ds' % (minutes, seconds)
         else:
             return '%ds' % (seconds,)
+
+    @staticmethod
+    def pretty_ratio(value, period):
+        """Format the ratio of value / period duration"""
+        if len(period) != 2:
+            return
+
+        ratio = 3600 * 100 * value / (period[1] - period[0])
+        return str(round(ratio, 1)) + UNIT_RATIO
 
     @staticmethod
     def handle_template_exception(ex):
