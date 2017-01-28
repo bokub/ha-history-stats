@@ -212,16 +212,22 @@ class HistoryStatsHelper:
     def parse_time_expr(expression):
         """Replace time expressions with functions accepted by templates"""
 
-        regex = r"(now\(\)(\.replace\([a-z]+=[0-9]+\))*)"
+        regex = r"(_NOW_(\.replace\([a-z]+=[0-9]+\))*)"
         replacement = r"as_timestamp(\1)"
 
         return re.sub(regex, replacement, expression.replace(
+            "_THIS_DAY_", "_TODAY_").replace(
+            "_ONE_WEEK_", "604800").replace(
+            "_ONE_DAY_", "86400").replace(
+            "_ONE_HOUR_", "3600").replace(
+            "_ONE_MINUTE_", "60").replace(
             "_THIS_YEAR_", "_THIS_MONTH_.replace(month=1)").replace(
             "_THIS_MONTH_", "_TODAY_.replace(day=1)").replace(
+            "_THIS_WEEK_", "_TODAY_ - now().weekday() * 86400").replace(
             "_TODAY_", "_THIS_HOUR_.replace(hour=0)").replace(
             "_THIS_HOUR_", "_THIS_MINUTE_.replace(minute=0)").replace(
-            "_THIS_MINUTE_", "_NOW_.replace(second=0)").replace(
-            "_NOW_", "now()"))
+            "_THIS_MINUTE_", "_NOW_.replace(second=0)")).replace(
+            "_NOW_", "now()")
 
     @staticmethod
     def pretty_datetime(timestamp):
