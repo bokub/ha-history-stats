@@ -1,5 +1,5 @@
 """
-Component to make instant statistics about your history
+Component to make instant statistics about your history.
 
 For more details about this platform, please refer to the documentation at
 https://home-assistant.io/components/sensor.history_stats/
@@ -57,7 +57,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 @asyncio.coroutine
 def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     """Set up the History Stats sensor."""
-
     entity_id = config.get(CONF_ENTITY_ID)
     entity_state = config.get(CONF_STATE)
     start = config.get(CONF_START)
@@ -66,19 +65,20 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     name = config.get(CONF_NAME)
     hsh = HistoryStatsHelper
 
-    if (start is None and end is None)\
-            or (start is None and duration is None)\
-            or (end is None and duration is None):
-        raise _LOGGER.error(
-            'You must provide 2 of the following : start, end, duration')
-    if start is not None and end is not None and duration is not None:
-        raise _LOGGER.error(
-            'You must pick exactly 2 of the following: start, end, duration')
+    params = 0
+    for param in [start, end, duration]:
+        if param is not None:
+            params += 1
+
+    if params != 2:
+        raise _LOGGER.error('You must provide exactly 2 of the following:' +
+                            ' start, end, duration')
 
     for template in [start, end, duration]:
         if template is not None:
             template.hass = hass
             template.template = hsh.parse_time_expr(template.template)
+            # pylint: disable=protected-access
             template._compiled_code = None  # Force recompilation
 
     yield from async_add_devices([HistoryStatsSensor(
@@ -154,7 +154,6 @@ class HistoryStatsSensor(Entity):
     @asyncio.coroutine
     def async_update(self):
         """Get the latest data and updates the states."""
-
         # Parse templates
         self.update_period()
 
@@ -196,7 +195,7 @@ class HistoryStatsSensor(Entity):
         self.value = elapsed / 3600
 
     def update_period(self):
-        """ Parse the templates and store a timestamp tuple in _period"""
+        """Parse the templates and store a timestamp tuple in _period."""
         start = None
         end = None
         duration = None
@@ -221,12 +220,11 @@ class HistoryStatsSensor(Entity):
 
 
 class HistoryStatsHelper:
-    """Static methods to make the HistoryStatsSensor code lighter"""
+    """Static methods to make the HistoryStatsSensor code lighter."""
 
     @staticmethod
     def parse_time_expr(expression):
-        """Replace time expressions with functions accepted by templates"""
-
+        """Replace time expressions with functions accepted by templates."""
         regex = r"(_NOW_(\.replace\([a-z]+=[0-9]+\))*)"
         replacement = r"as_timestamp(\1)"
 
@@ -246,13 +244,13 @@ class HistoryStatsHelper:
 
     @staticmethod
     def pretty_datetime(timestamp):
-        """Format a timestamp to a formatted datetime in the local timezone"""
+        """Format a timestamp to a formatted datetime in the local timezone."""
         return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)) \
             .strftime('%Y/%m/%d %H:%M:%S')
 
     @staticmethod
     def pretty_duration(hours):
-        """Format a duration in days, hours, minutes, seconds"""
+        """Format a duration in days, hours, minutes, seconds."""
         seconds = int(3600 * hours)
         days, seconds = divmod(seconds, 86400)
         hours, seconds = divmod(seconds, 3600)
@@ -268,7 +266,7 @@ class HistoryStatsHelper:
 
     @staticmethod
     def pretty_ratio(value, period):
-        """Format the ratio of value / period duration"""
+        """Format the ratio of value / period duration."""
         if len(period) != 2:
             return
 
@@ -277,7 +275,7 @@ class HistoryStatsHelper:
 
     @staticmethod
     def handle_template_exception(ex):
-        """Log an error nicely if the template cannot be interpreted"""
+        """Log an error nicely if the template cannot be interpreted."""
         if ex.args and ex.args[0].startswith(
                 "UndefinedError: 'None' has no attribute"):
             # Common during HA startup - so just a warning
@@ -286,9 +284,10 @@ class HistoryStatsHelper:
         _LOGGER.error(ex)
 
     # noinspection PyProtectedMember
+    # pylint: disable=protected-access
     @staticmethod
     def wait_till_db_ready():
-        """Start recorder connection if not done already"""
+        """Start recorder connection if not done already."""
         # Without this method, the recorder does not start its connection
         # itself, resulting in an infinite loop blocking the boot of home
         # assistant. It may be a nasty bug.
