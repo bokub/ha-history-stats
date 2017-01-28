@@ -2,7 +2,7 @@
 layout: page
 title: "History Statistics"
 description: "Instructions about how to integrate history_stats sensors into Home Assistant."
-date: 2017-01-27 00:54
+date: 2017-01-28 22:00
 sidebar: true
 comments: false
 sharing: true
