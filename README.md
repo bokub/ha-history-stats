@@ -25,8 +25,8 @@ sensor:
     name: Lamp ON today
     entity_id: light.my_lamp
     state: 'on'
-    start: '    {{ _TODAY_ }}    '
-    end: '    {{ _NOW_ }}    '
+    start: '{{ _TODAY_ }}'
+    end: '{{ _NOW_ }}'
 ```
 
 Configuration variables:
