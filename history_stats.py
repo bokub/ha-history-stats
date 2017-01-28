@@ -66,9 +66,9 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     name = config.get(CONF_NAME)
     hsh = HistoryStatsHelper
 
-    if (start is None and end is None
-        ) or (start is None and duration is None
-              ) or (end is None and duration is None):
+    if (start is None and end is None)\
+            or (start is None and duration is None)\
+            or (end is None and duration is None):
         raise _LOGGER.error(
             'You must provide 2 of the following : start, end, duration')
     if start is not None and end is not None and duration is not None:
@@ -230,19 +230,19 @@ class HistoryStatsHelper:
         regex = r"(_NOW_(\.replace\([a-z]+=[0-9]+\))*)"
         replacement = r"as_timestamp(\1)"
 
-        return re.sub(regex, replacement, expression.replace(
-            "_THIS_DAY_", "_TODAY_").replace(
-            "_ONE_WEEK_", "604800").replace(
-            "_ONE_DAY_", "86400").replace(
-            "_ONE_HOUR_", "3600").replace(
-            "_ONE_MINUTE_", "60").replace(
-            "_THIS_YEAR_", "_THIS_MONTH_.replace(month=1)").replace(
-            "_THIS_MONTH_", "_TODAY_.replace(day=1)").replace(
-            "_THIS_WEEK_", "_TODAY_ - now().weekday() * 86400").replace(
-            "_TODAY_", "_THIS_HOUR_.replace(hour=0)").replace(
-            "_THIS_HOUR_", "_THIS_MINUTE_.replace(minute=0)").replace(
-            "_THIS_MINUTE_", "_NOW_.replace(second=0)")).replace(
-            "_NOW_", "now()")
+        return re.sub(
+            regex, replacement, expression.replace("_THIS_DAY_", "_TODAY_")
+            .replace("_ONE_WEEK_", "604800")
+            .replace("_ONE_DAY_", "86400")
+            .replace("_ONE_HOUR_", "3600")
+            .replace("_ONE_MINUTE_", "60")
+            .replace("_THIS_YEAR_", "_THIS_MONTH_.replace(month=1)")
+            .replace("_THIS_MONTH_", "_TODAY_.replace(day=1)")
+            .replace("_THIS_WEEK_", "_TODAY_ - now().weekday() * 86400")
+            .replace("_TODAY_", "_THIS_HOUR_.replace(hour=0)")
+            .replace("_THIS_HOUR_", "_THIS_MINUTE_.replace(minute=0)")
+            .replace("_THIS_MINUTE_", "_NOW_.replace(second=0)")) \
+            .replace("_NOW_", "now()")
 
     @staticmethod
     def pretty_datetime(timestamp):
