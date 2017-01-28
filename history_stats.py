@@ -64,34 +64,33 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     end = config.get(CONF_END)
     duration = config.get(CONF_DURATION)
     name = config.get(CONF_NAME)
+    hsh = HistoryStatsHelper
 
-    if (start is None and end is None) or (
-                    start is None and duration is None) or (
-                    end is None and duration is None):
+    if (start is None and end is None
+        ) or (start is None and duration is None
+              ) or (end is None and duration is None):
         raise _LOGGER.error(
             'You must provide 2 of the following : start, end, duration')
     if start is not None and end is not None and duration is not None:
         raise _LOGGER.error(
-            'You have to pick exactly 2 of the following: start, end, duration')
+            'You must pick exactly 2 of the following: start, end, duration')
 
     for template in [start, end, duration]:
         if template is not None:
             template.hass = hass
-            template.template = HistoryStatsHelper.parse_time_expr(
-                template.template)  # Parse time aliases
+            template.template = hsh.parse_time_expr(template.template)
             template._compiled_code = None  # Force recompilation
 
-    yield from async_add_devices(
-        [HistoryStatsSensor(hass, entity_id, entity_state, start, end, duration,
-                            name)], True)
+    yield from async_add_devices([HistoryStatsSensor(
+        hass, entity_id, entity_state, start, end, duration, name)], True)
     return True
 
 
 class HistoryStatsSensor(Entity):
     """Representation of a HistoryStats sensor."""
 
-    def __init__(self, hass, entity_id, entity_state, start, end, duration,
-                 name):
+    def __init__(
+            self, hass, entity_id, entity_state, start, end, duration, name):
         """Initialize the HistoryStats sensor."""
         self._hass = hass
 
@@ -112,8 +111,8 @@ class HistoryStatsSensor(Entity):
             """Called when the sensor changes state."""
             hass.async_add_job(self.async_update_ha_state, True)
 
-        async_track_state_change(hass, entity_id,
-                                 async_stats_sensor_state_listener)
+        async_track_state_change(
+            hass, entity_id, async_stats_sensor_state_listener)
 
     @property
     def name(self):
@@ -139,13 +138,12 @@ class HistoryStatsSensor(Entity):
     def state_attributes(self):
         """Return the state attributes of the sensor."""
         start_timestamp, end_timestamp = self._period
-
+        hsh = HistoryStatsHelper
         return {
-            PRINT_VALUE: HistoryStatsHelper.pretty_duration(self.value),
-            PRINT_RATIO: HistoryStatsHelper.pretty_ratio(self.value,
-                                                         self._period),
-            PRINT_START: HistoryStatsHelper.pretty_datetime(start_timestamp),
-            PRINT_END: HistoryStatsHelper.pretty_datetime(end_timestamp),
+            PRINT_VALUE: hsh.pretty_duration(self.value),
+            PRINT_RATIO: hsh.pretty_ratio(self.value, self._period),
+            PRINT_START: hsh.pretty_datetime(start_timestamp),
+            PRINT_END: hsh.pretty_datetime(end_timestamp),
         }
 
     @property
@@ -160,7 +158,7 @@ class HistoryStatsSensor(Entity):
         # Parse templates
         self.update_period()
 
-        # Convert timestamps to datees
+        # Convert timestamps to dates
         start_timestamp, end_timestamp = self._period
         start = dt_util.utc_from_timestamp(start_timestamp)
         end = dt_util.utc_from_timestamp(end_timestamp)
@@ -170,15 +168,16 @@ class HistoryStatsSensor(Entity):
             return
 
         # Get history between start and end
-        history_list = history.state_changes_during_period(start, end,
-                                                           str(self._entity_id))
+        history_list = history.state_changes_during_period(
+            start, end, str(self._entity_id))
 
         if self._entity_id not in history_list.keys():
             return
 
         # Get the first state
         last_state = history.get_state(start, self._entity_id)
-        last_state = last_state is not None and last_state == self._entity_state
+        last_state = (last_state is not None and
+                      last_state == self._entity_state)
         last_time = start_timestamp
         elapsed = 0
 
@@ -197,7 +196,7 @@ class HistoryStatsSensor(Entity):
         self.value = elapsed / 3600
 
     def update_period(self):
-        """ Parse the template values and stores a timestamp tuple in _period"""
+        """ Parse the templates and store a timestamp tuple in _period"""
         start = None
         end = None
         duration = None
@@ -248,8 +247,8 @@ class HistoryStatsHelper:
     @staticmethod
     def pretty_datetime(timestamp):
         """Format a timestamp to a formatted datetime in the local timezone"""
-        return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)).strftime(
-            '%Y/%m/%d %H:%M:%S')
+        return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)) \
+            .strftime('%Y/%m/%d %H:%M:%S')
 
     @staticmethod
     def pretty_duration(hours):
