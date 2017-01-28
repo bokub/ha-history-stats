@@ -65,26 +65,33 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     duration = config.get(CONF_DURATION)
     name = config.get(CONF_NAME)
 
-    if (start is None and end is None) or (start is None and duration is None) or (end is None and duration is None):
-        raise _LOGGER.error('You must provide 2 of the following : start, end, duration')
+    if (start is None and end is None) or (
+                    start is None and duration is None) or (
+                    end is None and duration is None):
+        raise _LOGGER.error(
+            'You must provide 2 of the following : start, end, duration')
     if start is not None and end is not None and duration is not None:
-        raise _LOGGER.error('You have to pick exactly 2 of the following: start, end, duration')
+        raise _LOGGER.error(
+            'You have to pick exactly 2 of the following: start, end, duration')
 
     for template in [start, end, duration]:
         if template is not None:
             template.hass = hass
-            template.template = HistoryStatsHelper.parse_time_expr(template.template)  # Parse time aliases
-            template._compiled_code = None  # Force recompilation of the template
+            template.template = HistoryStatsHelper.parse_time_expr(
+                template.template)  # Parse time aliases
+            template._compiled_code = None  # Force recompilation
 
     yield from async_add_devices(
-        [HistoryStatsSensor(hass, entity_id, entity_state, start, end, duration, name)], True)
+        [HistoryStatsSensor(hass, entity_id, entity_state, start, end, duration,
+                            name)], True)
     return True
 
 
 class HistoryStatsSensor(Entity):
     """Representation of a HistoryStats sensor."""
 
-    def __init__(self, hass, entity_id, entity_state, start, end, duration, name):
+    def __init__(self, hass, entity_id, entity_state, start, end, duration,
+                 name):
         """Initialize the HistoryStats sensor."""
         self._hass = hass
 
@@ -105,7 +112,8 @@ class HistoryStatsSensor(Entity):
             """Called when the sensor changes state."""
             hass.async_add_job(self.async_update_ha_state, True)
 
-        async_track_state_change(hass, entity_id, async_stats_sensor_state_listener)
+        async_track_state_change(hass, entity_id,
+                                 async_stats_sensor_state_listener)
 
     @property
     def name(self):
@@ -134,7 +142,8 @@ class HistoryStatsSensor(Entity):
 
         return {
             PRINT_VALUE: HistoryStatsHelper.pretty_duration(self.value),
-            PRINT_RATIO: HistoryStatsHelper.pretty_ratio(self.value, self._period),
+            PRINT_RATIO: HistoryStatsHelper.pretty_ratio(self.value,
+                                                         self._period),
             PRINT_START: HistoryStatsHelper.pretty_datetime(start_timestamp),
             PRINT_END: HistoryStatsHelper.pretty_datetime(end_timestamp),
         }
@@ -161,7 +170,8 @@ class HistoryStatsSensor(Entity):
             return
 
         # Get history between start and end
-        history_list = history.state_changes_during_period(start, end, str(self._entity_id))
+        history_list = history.state_changes_during_period(start, end,
+                                                           str(self._entity_id))
 
         if self._entity_id not in history_list.keys():
             return
@@ -187,15 +197,18 @@ class HistoryStatsSensor(Entity):
         self.value = elapsed / 3600
 
     def update_period(self):
-        """ Parse the template values and stores a(start, end) timestamp tuple in _period"""
+        """ Parse the template values and stores a timestamp tuple in _period"""
         start = None
         end = None
         duration = None
 
         try:
-            start = math.floor(float(self._start.async_render())) if self._start is not None else None
-            end = math.floor(float(self._end.async_render())) if self._end is not None else None
-            duration = math.floor(float(self._duration.async_render())) if self._duration is not None else None
+            if self._start is not None:
+                start = math.floor(float(self._start.async_render()))
+            if self._end is not None:
+                end = math.floor(float(self._end.async_render()))
+            if self._duration is not None:
+                duration = math.floor(float(self._duration.async_render()))
         except TemplateError as ex:
             HistoryStatsHelper.handle_template_exception(ex)
         except ValueError:
@@ -235,7 +248,8 @@ class HistoryStatsHelper:
     @staticmethod
     def pretty_datetime(timestamp):
         """Format a timestamp to a formatted datetime in the local timezone"""
-        return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)).strftime('%Y/%m/%d %H:%M:%S')
+        return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)).strftime(
+            '%Y/%m/%d %H:%M:%S')
 
     @staticmethod
     def pretty_duration(hours):
@@ -265,7 +279,8 @@ class HistoryStatsHelper:
     @staticmethod
     def handle_template_exception(ex):
         """Log an error nicely if the template cannot be interpreted"""
-        if ex.args and ex.args[0].startswith("UndefinedError: 'None' has no attribute"):
+        if ex.args and ex.args[0].startswith(
+                "UndefinedError: 'None' has no attribute"):
             # Common during HA startup - so just a warning
             _LOGGER.warning(ex)
             return
@@ -275,8 +290,9 @@ class HistoryStatsHelper:
     @staticmethod
     def wait_till_db_ready():
         """Start recorder connection if not done already"""
-        # Without this method, the recorder does not start its connection itself, resulting in
-        # an infinite loop blocking the boot of home assistant. It may be a nasty bug.
+        # Without this method, the recorder does not start its connection
+        # itself, resulting in an infinite loop blocking the boot of home
+        # assistant. It may be a nasty bug.
         if recorder._INSTANCE.db_ready._flag:
             return True
         time.sleep(0.5)  # Wait, just in case db is starting
