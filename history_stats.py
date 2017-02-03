@@ -39,19 +39,34 @@ UNIT = 'h'
 UNIT_RATIO = '%'
 ICON = 'mdi:chart-line'
 
-PRINT_START = 'from'
-PRINT_END = 'to'
-PRINT_VALUE = 'value'
-PRINT_RATIO = 'ratio'
+ATTR_START = 'from'
+ATTR_END = 'to'
+ATTR_VALUE = 'value'
+ATTR_RATIO = 'ratio'
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+
+def exactly_two_period_keys(conf):
+    """Ensure exactly 2 of CONF_PERIOD_KEYS are provided."""
+    provided = 0
+
+    for param in CONF_PERIOD_KEYS:
+        if param in conf and conf[param] is not None:
+            provided += 1
+
+    if provided != 2:
+        raise vol.Invalid('You must provide exactly 2 of the following:'
+                          + ' start, end, duration')
+    return conf
+
+
+PLATFORM_SCHEMA = vol.All(PLATFORM_SCHEMA.extend({
     vol.Required(CONF_ENTITY_ID): cv.entity_id,
     vol.Required(CONF_STATE): cv.slug,
     vol.Optional(CONF_START, default=None): cv.template,
     vol.Optional(CONF_END, default=None): cv.template,
     vol.Optional(CONF_DURATION, default=None): cv.template,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-})
+}), exactly_two_period_keys)
 
 
 # noinspection PyUnusedLocal
@@ -65,16 +80,6 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     duration = config.get(CONF_DURATION)
     name = config.get(CONF_NAME)
     hsh = HistoryStatsHelper
-
-    params = 0
-    for param in [start, end, duration]:
-        if param is not None:
-            params += 1
-
-    if params != 2:
-        _LOGGER.error('You must provide exactly 2 of the following:'
-                      + ' start, end, duration')
-        return False
 
     for template in [start, end, duration]:
         if template is not None:
@@ -138,15 +143,15 @@ class HistoryStatsSensor(Entity):
         return True
 
     @property
-    def state_attributes(self):
+    def device_state_attributes(self):
         """Return the state attributes of the sensor."""
         start_timestamp, end_timestamp = self._period
         hsh = HistoryStatsHelper
         return {
-            PRINT_VALUE: hsh.pretty_duration(self.value),
-            PRINT_RATIO: hsh.pretty_ratio(self.value, self._period),
-            PRINT_START: hsh.pretty_datetime(start_timestamp),
-            PRINT_END: hsh.pretty_datetime(end_timestamp),
+            ATTR_VALUE: hsh.pretty_duration(self.value),
+            ATTR_RATIO: hsh.pretty_ratio(self.value, self._period),
+            ATTR_START: hsh.pretty_datetime(start_timestamp),
+            ATTR_END: hsh.pretty_datetime(end_timestamp),
         }
 
     @property
@@ -249,7 +254,7 @@ class HistoryStatsHelper:
     def pretty_datetime(timestamp):
         """Format a timestamp to a formatted datetime in the local timezone."""
         return dt_util.as_local(dt_util.utc_from_timestamp(timestamp)) \
-            .strftime('%Y/%m/%d %H:%M:%S')
+            .strftime('%Y-%m-%d %H:%M:%S')
 
     @staticmethod
     def pretty_duration(hours):
