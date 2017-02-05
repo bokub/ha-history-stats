@@ -1,4 +1,7 @@
 # ha-history-stats
+
+[![Build Status](https://travis-ci.org/bokub/home-assistant.svg?branch=test)](https://travis-ci.org/bokub/home-assistant)
+
 A home-assistant component that gives statistics about your history.
 
 To try this component, just `add history_stats.py` in `.homeassistant/custom_components/sensor/` and restart home-assistant
