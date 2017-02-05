@@ -1,3 +1,12 @@
+# ha-history-stats
+A home-assistant component that gives statistics about your history.
+
+To try this component, just `add history_stats.py` in `.homeassistant/custom_components/sensor/` and restart home-assistant
+
+> Note: This component used to support time aliases, but they have been removed. The old code is still available in the time-aliases branch.
+
+-----------------
+
 The `history_stats` sensor platform provides quick statistics about another component, using data from the history.
 
 It can track how long the component has been in a specific state, in a custom time period.
@@ -7,7 +16,6 @@ Examples of what you can track :
 - How long the lights were ON yesterday
 - How long you watched TV today
 
-> Note: This component used to support time aliases, but they have been removed. The old code is still available in the time-aliases branch.
 
 ## Configuration
 
