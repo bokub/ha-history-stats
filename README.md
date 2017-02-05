@@ -1,10 +1,3 @@
-# ha-history-stats
-A home-assistant component that gives statistics about your history.
-
-To try this component, just `add history_stats.py` in `.homeassistant/custom_components/sensor/` and restart home-assistant
-
------------------
-
 The `history_stats` sensor platform provides quick statistics about another component, using data from the history.
 
 It can track how long the component has been in a specific state, in a custom time period.
@@ -14,9 +7,11 @@ Examples of what you can track :
 - How long the lights were ON yesterday
 - How long you watched TV today
 
+> Note: This component used to support time aliases, but they have been removed. The old code is still available in the time-aliases branch.
+
 ## Configuration
 
-To enable the statistics sensor, add the following lines to your `configuration.yaml`:
+To enable the history statistics sensor, add the following lines to your `configuration.yaml`:
 
 ```yaml
 # Example configuration.yaml entry
@@ -25,8 +20,8 @@ sensor:
     name: Lamp ON today
     entity_id: light.my_lamp
     state: 'on'
-    start: '{{ _TODAY_ }}'
-    end: '{{ _NOW_ }}'
+    start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+    end: '{{ now() }}'
 ```
 
 Configuration variables:
@@ -34,61 +29,65 @@ Configuration variables:
  - **entity_id** (*Required*): The entity you want to track
  - **state** (*Required*): The state you want to track
  - **name** (*Optional*): Name displayed on the frontend
- - **start**: When to start the measure (timestamp).
- - **end**: When to stop the measure (timestamp)
+ - **start**: When to start the measure (timestamp or datetime).
+ - **end**: When to stop the measure (timestamp or datetime)
  - **duration**: Duration of the measure (seconds)
 
 
+You have to provide **exactly 2** of `start`, `end` and `duration`.
 
-<p class='note'>
-You have to provide **exactly 2** of _start_, _end_ and _duration_. They can be templates, so the timestamps are dynamic.
-</p>
+You can use [template extensions](/topics/templating/#home-assistant-template-extensions) such as `now()` or `as_timestamp()` to handle dynamic dates, as shown in the examples below.
 
 
-## Time Aliases
+## Time periods
 
-Because timestamps can be difficult to handle, the `history_stats` component has built-in aliases to help you write your templates, and make them easier to understand.
-Note that those aliases will not work with other components of Home Assistant.
+The `history_stats` component will execute a measure within a precise time period. You should always provide 2 of the following :
+- When the period starts (`start` variable)
+- When the period ends (`end` variable)
+- How long is the period (`duration` variable)
 
-Imagine that the current datetime is the following : `Tuesday, 14 Feb 2017 18:42:12`.
-Here are the aliases you can use, and what they refer to:
+As `start` and `end` variables can be either datetimes or timestamps, you can configure almost any period you want.
 
-| Alias                   | Datetime equivalent             | Explanation                                 |
-| ----------------------- | ------------------------------- | ------------------------------------------- |
-| \_NOW_                  | Tuesday, 14 Feb 2017 18:42:12   | The current timestamp                       |
-| \_THIS_MINUTE_          | Tuesday, 14 Feb 2017 18:42:00   | The beginning of the current minute         |
-| \_THIS_HOUR_            | Tuesday, 14 Feb 2017 18:00:00   | The beginning of the current hour           |
-| \_TODAY_ or \_THIS_DAY_ | Tuesday, 14 Feb 2017 00:00:00   | The current day, at midnight                |
-| \_THIS_WEEK_            | Monday, 13 Feb 2017 00:00:00    | The last monday, at midnight                |
-| \_THIS_MONTH_           | Wednesday, 01 Feb 2017 00:00:00 | First day of the current month, at midnight |
-| \_THIS_YEAR_            | Sunday, 01 Jan 2017 00:00:00    | First day of the current year, at midnight  |
+Don't forget that `duration` is a number of seconds, not a datetime. It is recommended to use it only if your period has a fixed length (24 hours, or 7 days, for example).
 
-| Alias         | Value in seconds |
-| ------------- | ---------------- |
-| \_ONE_MINUTE_ | 60               |
-| \_ONE_HOUR_   | 3600             |
-| \_ONE_DAY_    | 86400            |
-| \_ONE_WEEK_   | 604800           |
-
-Each one of those aliases will be converted to a real timestamp, which is a number of seconds, so you can use basic operators like `+`, `-` or `*` as well as numbers.
-
-You can also use [template extensions](https://home-assistant.io/topics/templating/#home-assistant-template-extensions) instead of the `history_stats` aliases. For example, `_THIS_HOUR_` is the equivalent of `as_timestamp(now().replace(hour=0).replace(minute=0).replace(second=0))`
-
-### Examples
+### {% linkable_title Examples %}
 
 Here are some examples of periods you could work with, and what to write in your `configuration.yaml`:
 
-    
-| Time period               | start                            | end             | duration               |
-| ------------------------- | :------------------------------: | :-------------: | :--------------------: |
-| Today                     | `{{ _TODAY_ }}    `              | `{{ _NOW_ }}`   |                        |
-| Yesterday                 |                                  | `{{ _TODAY_ }}` | `{{ _ONE_DAY_ }}`      |
-| Yesterday (alternative)   | `{{ _TODAY_ - _ONE_DAY_ }}    `  | `{{ _TODAY_ }}` |                        |
-| This morning (6AM - 11AM) | `{{ _TODAY_ + 6 * _ONE_HOUR_ }}` |                 | `{{ 5 * _ONE_HOUR_ }}` |
-| Current month             | `{{ _THIS_MONTH_ }}`             | `{{ _NOW_ }}`   |                        |
-| Last 30 days              |                                  | `{{ _TODAY_ }}` | `{{ 30 * _ONE_DAY_ }}` |
-| All your history          | `{{ 0 }}`                        | `{{ _NOW_ }}`   |                        |
+**Today**: starts at 00:00 of the current day and ends right now.
+```yaml
+    start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+    end: '{{ now() }}'
+```
+**Yesterday**: ends today at 00:00, lasts 24 hours.
+```yaml
+    end: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+    duration: '{{ 24 * 3600 }}'
+```
+**This morning (6AM - 11AM)**: starts today at 6, lasts 5 hours.
+```yaml
+    start: '{{ now().replace(hour=6).replace(minute=0).replace(second=0) }}'
+    duration: '{{ 5 * 3600 }}'
+```
 
------------------
+**Current week**: starts last Monday at 00:00, ends right now.
 
-Discuss it on the [home-assistant forum](https://community.home-assistant.io/t/history-statistics-component/10194)
+Here, last Monday is _today_ as a timestamp, minus 86400 times the current weekday (86400 is the number of seconds in one day, the weekday is 0 on Monday, 6 on Sunday).
+```yaml
+    start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0) ) - now().weekday() * 86400 }}'
+    end: '{{ now() }}'
+```
+**Last 30 days**: ends today at 00:00, lasts 30 days. Easy one.
+```yaml
+    end: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+    duration: '{{ 30 * 24 * 3600 }}'
+```
+
+**All your history** starts at timestamp = 0, and ends right now.
+```yaml
+    start: '{{ 0 }}'
+    end: '{{ now() }}'
+```
+
+If you want to check if your period is right, just click on your component, the `from` and `to` attributes will show the start and end of the period, nicely formatted.
+
