@@ -71,7 +71,6 @@ class TestHistoryStatsSensor(unittest.TestCase):
 
     def test_measure(self):
         """Test the history statistics sensor measure."""
-
         later = dt_util.utcnow() - timedelta(seconds=15)
         earlier = later - timedelta(minutes=30)
 
@@ -135,7 +134,6 @@ class TestHistoryStatsSensor(unittest.TestCase):
 
     def test_bad_template(self):
         """Test Exception when the template cannot be parsed."""
-
         bad = Template('{{ x - 12 }}', self.hass)  # x is undefined
         good = Template('{{ now() }}', self.hass)
         good_duration = Template('{{ 3600 }}', self.hass)

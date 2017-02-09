@@ -106,6 +106,7 @@ class HistoryStatsSensor(Entity):
         self.value = 0
 
         def force_refresh(*args):
+            """Force the component to refresh."""
             self.schedule_update_ha_state(True)
 
         # Update value when home assistant starts
