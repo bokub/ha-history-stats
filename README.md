@@ -1,12 +1,14 @@
 # ha-history-stats
 
 [![Build Status](https://travis-ci.org/bokub/home-assistant.svg?branch=test)](https://travis-ci.org/bokub/home-assistant)
+[![Home-assistant version](https://img.shields.io/badge/homeassistant-0.39-blue.svg)](https://home-assistant.io/components/sensor.history_stats/)
+
+> **Note**: This component is now available in home-assistant (introduced in version 0.39)
+
 
 A home-assistant component that gives statistics about your history.
 
 To try this component, just `add history_stats.py` in `.homeassistant/custom_components/sensor/` and restart home-assistant
-
-> Note: This component used to support time aliases, but they have been removed. The old code is still available in the time-aliases branch.
 
 -----------------
 
@@ -61,7 +63,7 @@ As `start` and `end` variables can be either datetimes or timestamps, you can co
 
 Don't forget that `duration` is a number of seconds, not a datetime. It is recommended to use it only if your period has a fixed length (24 hours, or 7 days, for example).
 
-### {% linkable_title Examples %}
+### Examples
 
 Here are some examples of periods you could work with, and what to write in your `configuration.yaml`:
 
