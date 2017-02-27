@@ -12,11 +12,12 @@ To try this component, just `add history_stats.py` in `.homeassistant/custom_com
 
 -----------------
 
-The `history_stats` sensor platform provides quick statistics about another component, using data from the history.
+The `history_stats` sensor platform provides quick statistics about another component or platforms, using data from the [history](/components/history/).
 
 It can track how long the component has been in a specific state, in a custom time period.
 
-Examples of what you can track :
+Examples of what you can track:
+
 - How long you were at home this week
 - How long the lights were ON yesterday
 - How long you watched TV today
