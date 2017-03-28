@@ -1,7 +1,7 @@
 # ha-history-stats
 
 [![Build Status](https://travis-ci.org/bokub/home-assistant.svg?branch=test)](https://travis-ci.org/bokub/home-assistant)
-[![Home-assistant version](https://img.shields.io/badge/homeassistant-0.39-blue.svg)](https://home-assistant.io/components/sensor.history_stats/)
+[![Home-assistant version](https://img.shields.io/badge/homeassistant-0.39+-blue.svg)](https://home-assistant.io/components/sensor.history_stats/)
 
 > **Note**: This component is now available in home-assistant (introduced in version 0.39)
 
