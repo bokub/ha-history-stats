@@ -12,7 +12,7 @@ To try this component, just `add history_stats.py` in `.homeassistant/custom_com
 
 -----------------
 
-The `history_stats` sensor platform provides quick statistics about another component or platforms, using data from the [history](/components/history/).
+The `history_stats` sensor platform provides quick statistics about another component or platforms, using data from the [history](https://home-assistant.io/components/history/).
 
 It can track how long the component has been in a specific state, in a custom time period.
 
@@ -52,7 +52,7 @@ Configuration variables:
 
 You have to provide **exactly 2** of `start`, `end` and `duration`.
 
-You can use [template extensions](/topics/templating/#home-assistant-template-extensions) such as `now()` or `as_timestamp()` to handle dynamic dates, as shown in the examples below.
+You can use [template extensions](https://home-assistant.io/topics/templating/#home-assistant-template-extensions) such as `now()` or `as_timestamp()` to handle dynamic dates, as shown in the examples below.
 
 ## Sensor type
 
