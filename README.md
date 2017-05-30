@@ -113,5 +113,4 @@ Here, last Monday is _today_ as a timestamp, minus 86400 times the current weekd
     end: '{{ now() }}'
 ```
 
-If you want to check if your period is right, just click on your component, the `from` and `to` attributes will show the start and end of the period, nicely formatted.
-
+The `/dev-template` page of your home-assistant UI can help you check if the values for `start`, `end` or `duration` are correct.

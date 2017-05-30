@@ -45,8 +45,6 @@ UNITS = {
 }
 ICON = 'mdi:chart-line'
 
-ATTR_START = 'from'
-ATTR_END = 'to'
 ATTR_VALUE = 'value'
 
 
@@ -158,12 +156,9 @@ class HistoryStatsSensor(Entity):
     @property
     def device_state_attributes(self):
         """Return the state attributes of the sensor."""
-        start, end = self._period
         hsh = HistoryStatsHelper
         return {
             ATTR_VALUE: hsh.pretty_duration(self.value),
-            ATTR_START: start.strftime('%Y-%m-%d %H:%M:%S'),
-            ATTR_END: end.strftime('%Y-%m-%d %H:%M:%S'),
         }
 
     @property
@@ -280,13 +275,11 @@ class HistoryStatsHelper:
         hours, seconds = divmod(seconds, 3600)
         minutes, seconds = divmod(seconds, 60)
         if days > 0:
-            return '%dd %dh %dm %ds' % (days, hours, minutes, seconds)
+            return '%dd %dh %dm' % (days, hours, minutes)
         elif hours > 0:
-            return '%dh %dm %ds' % (hours, minutes, seconds)
-        elif minutes > 0:
-            return '%dm %ds' % (minutes, seconds)
+            return '%dh %dm' % (hours, minutes)
         else:
-            return '%ds' % (seconds,)
+            return '%dm' % minutes
 
     @staticmethod
     def pretty_ratio(value, period):
