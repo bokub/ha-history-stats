@@ -168,13 +168,33 @@ class HistoryStatsSensor(Entity):
 
     def update(self):
         """Get the latest data and updates the states."""
+        # Get previous values of start and end
+        p_start, p_end = self._period
+
         # Parse templates
         self.update_period()
         start, end = self._period
 
-        # Convert to UTC
+        # Convert times to UTC
         start = dt_util.as_utc(start)
         end = dt_util.as_utc(end)
+        p_start = dt_util.as_utc(p_start)
+        p_end = dt_util.as_utc(p_end)
+        now = dt_util.as_utc(datetime.datetime.now())
+
+        # Compute integer timestamps
+        start_timestamp = math.floor(dt_util.as_timestamp(start))
+        end_timestamp = math.floor(dt_util.as_timestamp(end))
+        p_start_timestamp = math.floor(dt_util.as_timestamp(p_start))
+        p_end_timestamp = math.floor(dt_util.as_timestamp(p_end))
+        now_timestamp = math.floor(dt_util.as_timestamp(now))
+
+        # If period has not changed and current time after the period end...
+        if start_timestamp == p_start_timestamp and \
+            end_timestamp == p_end_timestamp and \
+                end_timestamp <= now_timestamp:
+            # Don't compute anything as the value cannot have changed
+            return
 
         # Get history between start and end
         history_list = history.state_changes_during_period(
@@ -187,7 +207,7 @@ class HistoryStatsSensor(Entity):
         last_state = history.get_state(self.hass, start, self._entity_id)
         last_state = (last_state is not None and
                       last_state == self._entity_state)
-        last_time = dt_util.as_timestamp(start)
+        last_time = start_timestamp
         elapsed = 0
         count = 0
 
@@ -206,8 +226,7 @@ class HistoryStatsSensor(Entity):
 
         # Count time elapsed between last history state and end of measure
         if last_state:
-            measure_end = min(dt_util.as_timestamp(end), dt_util.as_timestamp(
-                datetime.datetime.now()))
+            measure_end = min(end_timestamp, now_timestamp)
             elapsed += measure_end - last_time
 
         # Save value in hours
