@@ -1,14 +1,10 @@
 # ha-history-stats
 
-[![Build Status](https://travis-ci.org/bokub/home-assistant.svg?branch=test)](https://travis-ci.org/bokub/home-assistant)
-[![Home-assistant version](https://img.shields.io/badge/homeassistant-0.39+-blue.svg)](https://home-assistant.io/components/sensor.history_stats/)
-
-> **Note**: This component is now available in home-assistant (introduced in version 0.39)
-
-
 A home-assistant component that gives statistics about your history.
 
 To try this component, just `add history_stats.py` in `.homeassistant/custom_components/sensor/` and restart home-assistant
+
+### N.B: This component is now [part of the home-assistant core](https://home-assistant.io/components/sensor.history_stats/) (introduced in version 0.39)
 
 -----------------
 
